@@ -1,0 +1,39 @@
+name: 🧹 Cleanup All Organization Docker Images
+
+on:
+  schedule:
+    # Se ejecuta el primer día de cada mes a las 2:00 AM UTC
+    - cron: '0 2 1 * *'
+  workflow_dispatch:
+
+jobs:
+  get-packages:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: 📦 Get list of all container packages in organization
+        id: set-matrix
+        env:
+          GH_TOKEN: ${{ secrets.ORG_CLEANUP_TOKEN }}
+          ORG_NAME: "10code-product"
+        run: |
+          package_names=$(gh api "orgs/${ORG_NAME}/packages?package_type=container" --paginate -q '.[] | .name' | jq -R . | jq -s '{"include":.}')
+          echo "matrix=$package_names" >> $GITHUB_OUTPUT
+
+  delete-old-versions:
+    needs: get-packages
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.get-packages.outputs.matrix) }}
+      fail-fast: false
+
+    steps:
+      - name: 🗑️ Delete old versions for ${{ matrix.name }}
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ matrix.name }}
+          package-type: 'container'
+          min-versions-to-keep: 3
+          delete-only-untagged-versions: true
+          token: ${{ secrets.ORG_CLEANUP_TOKEN }}
