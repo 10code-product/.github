@@ -18,8 +18,17 @@ jobs:
           GH_TOKEN: ${{ secrets.ORG_CLEANUP_TOKEN }}
           ORG_NAME: "10code-product"
         run: |
-          package_names=$(gh api "orgs/${ORG_NAME}/packages?package_type=container" --paginate -q '.[] | .name' | jq -R . | jq -s '{"include":.}')
-          echo "matrix=$package_names" >> $GITHUB_OUTPUT
+          package_names=$(gh api "orgs/${ORG_NAME}/packages?package_type=container" --paginate -q '.[] | .name')
+
+          if [ -z "$package_names" ]; then
+            echo "No container packages found. Skipping deletion."
+            matrix='{"include":[]}'
+          else
+            echo "Found packages to process."
+            matrix=$(echo "$package_names" | jq -R . | jq -s '{"include":.}')
+          fi
+        
+          echo "matrix=$matrix" >> $GITHUB_OUTPUT
 
   delete-old-versions:
     needs: get-packages
