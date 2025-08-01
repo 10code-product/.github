@@ -44,5 +44,4 @@ jobs:
           package-name: ${{ matrix.name }}
           package-type: 'container'
           min-versions-to-keep: 3
-          delete-only-untagged-versions: true
           token: ${{ secrets.ORG_CLEANUP_TOKEN }}
